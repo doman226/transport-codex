@@ -21,6 +21,7 @@ export const quoteInputSchema = z.object({
   requiresCrane: z.boolean().default(false),
   marginType: z.enum(["percent", "amount"]),
   marginValue: z.coerce.number().min(0, "Marza nie moze byc ujemna."),
+  fuelType: z.enum(["on", "pb95"]).default("on"),
   extraOperationalCostPln: z.coerce
     .number()
     .min(0, "Koszt dodatkowy nie moze byc ujemny."),

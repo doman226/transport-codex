@@ -62,6 +62,7 @@ export const TransportQuoteForm = () => {
       requiresCrane: false,
       marginType: "percent",
       marginValue: DEFAULT_VEHICLES[0]?.defaultMarginPercent ?? 12,
+      fuelType: "on",
       extraOperationalCostPln: 0,
       manualDistanceKm: undefined,
       manualTollCostPln: undefined,
@@ -346,6 +347,13 @@ export const TransportQuoteForm = () => {
             </div>
 
             <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <Label>
+                Rodzaj paliwa
+                <select className={inputClassName} {...form.register("fuelType")}>
+                  <option value="on">ON (diesel)</option>
+                  <option value="pb95">PB95</option>
+                </select>
+              </Label>
               <Label>
                 Reczna cena paliwa [PLN/l]
                 <input

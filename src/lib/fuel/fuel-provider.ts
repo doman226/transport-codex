@@ -8,10 +8,16 @@ import {
   readRuntimeCache,
   writeRuntimeCache
 } from "@/lib/shared/runtime-cache";
-import type { FuelPriceResult } from "@/types/quote";
+import type { FuelPriceResult, FuelType } from "@/types/quote";
 
 const PUBLIC_FUEL_SOURCE_URL = "https://www.fuel-prices.eu/Poland/";
-const FUEL_CACHE_KEY = "fuel:diesel-pln";
+const FUEL_CACHE_KEY_PREFIX = "fuel:pln";
+const PB95_FALLBACK_DELTA_PLN = 0.35;
+
+const FUEL_LABELS: Record<FuelType, string> = {
+  on: "ON",
+  pb95: "PB95"
+};
 
 const normalizeFuelReason = (reason?: string): string | undefined => {
   if (!reason) {
@@ -23,15 +29,15 @@ const normalizeFuelReason = (reason?: string): string | undefined => {
   }
 
   if (reason.startsWith("Fuel API status")) {
-    return `błąd dostawcy paliwa (${reason.replace("Fuel API status ", "HTTP ")})`;
+    return `blad dostawcy paliwa (${reason.replace("Fuel API status ", "HTTP ")})`;
   }
 
-  if (reason.includes("dieselPricePlnPerLiter")) {
+  if (reason.includes("fuel price")) {
     return "niepoprawny format odpowiedzi dostawcy paliwa";
   }
 
   if (reason.includes("Unknown fuel error")) {
-    return "nieznany błąd dostawcy paliwa";
+    return "nieznany blad dostawcy paliwa";
   }
 
   return reason;
@@ -53,22 +59,31 @@ const mapFuelError = (error: unknown): string => {
   return "Unknown fuel error";
 };
 
+const getFallbackFuelPriceByType = (fuelType: FuelType): number => {
+  if (fuelType === "pb95") {
+    return DEFAULT_MVP_SETTINGS.fallbackFuelPricePlnPerLiter + PB95_FALLBACK_DELTA_PLN;
+  }
+  return DEFAULT_MVP_SETTINGS.fallbackFuelPricePlnPerLiter;
+};
+
 export const fallbackFuelPrice = (
+  fuelType: FuelType,
   reason?: string,
   overridePrice?: number
 ): FuelPriceResult => {
   const normalizedReason = normalizeFuelReason(reason);
 
   return {
-    dieselPricePlnPerLiter: roundTo2(
-      overridePrice ?? DEFAULT_MVP_SETTINGS.fallbackFuelPricePlnPerLiter
+    fuelType,
+    fuelPricePlnPerLiter: roundTo2(
+      overridePrice ?? getFallbackFuelPriceByType(fuelType)
     ),
     source: "fallback-static",
     date: new Date().toISOString(),
     fallbackUsed: true,
     message: normalizedReason
-      ? `Cena paliwa fallback. Powód: ${normalizedReason}.`
-      : "Cena paliwa fallback (wartość przykładowa)."
+      ? `Cena paliwa ${FUEL_LABELS[fuelType]} fallback. Powod: ${normalizedReason}.`
+      : `Cena paliwa ${FUEL_LABELS[fuelType]} fallback (wartosc przykladowa).`
   };
 };
 
@@ -92,57 +107,109 @@ const extractFirstPriceNumber = (value: string | undefined): number | null => {
   return Number.isFinite(parsed) ? parsed : null;
 };
 
-export const parseDieselEurPerLiter = (html: string): number | null => {
-  const dieselSection = html.match(/DIESEL[\s\S]{0,700}/i)?.[0];
-  if (!dieselSection) {
-    return null;
+const findPriceByKeywords = (html: string, keywords: string[]): number | null => {
+  for (const keyword of keywords) {
+    const section = html.match(new RegExp(`${keyword}[\\s\\S]{0,900}`, "i"))?.[0];
+    if (!section) {
+      continue;
+    }
+
+    const euroMatch = section.match(
+      /(?:€|&euro;|&#8364;)\s*([0-9]+(?:[.,][0-9]+)?)/i
+    );
+    const euroValue = extractFirstPriceNumber(euroMatch?.[1]);
+    if (euroValue) {
+      return euroValue;
+    }
+
+    const plainMatch = section.match(
+      /([0-9]+(?:[.,][0-9]+)?)\s*(?:EUR|EURO)/i
+    );
+    const plainValue = extractFirstPriceNumber(plainMatch?.[1]);
+    if (plainValue) {
+      return plainValue;
+    }
   }
 
-  const euroMatch = dieselSection.match(
-    /(?:€|&euro;|&#8364;)\s*([0-9]+(?:[.,][0-9]+)?)/i
-  );
-  const euroValue = extractFirstPriceNumber(euroMatch?.[1]);
-  if (euroValue) {
-    return euroValue;
-  }
-
-  const plainMatch = dieselSection.match(/([0-9]+(?:[.,][0-9]+)?)\s*(?:EUR|EURO)/i);
-  return extractFirstPriceNumber(plainMatch?.[1]);
+  return null;
 };
 
-const fetchFuelFromCustomEndpoint = async (
-  endpoint: string
-): Promise<FuelPriceResult> => {
-  const payload = await fetchJson<{
-    dieselPricePlnPerLiter?: number;
-    date?: string;
-  }>(endpoint);
+export const parseFuelEurPerLiter = (
+  html: string,
+  fuelType: FuelType
+): number | null => {
+  if (fuelType === "on") {
+    return findPriceByKeywords(html, ["DIESEL", "B7"]);
+  }
 
-  if (!payload.dieselPricePlnPerLiter) {
-    throw new Error("Fuel API payload is missing dieselPricePlnPerLiter");
+  return findPriceByKeywords(html, [
+    "PREMIUM UNLEADED 95",
+    "UNLEADED 95",
+    "GASOLINE 95",
+    "PETROL 95",
+    "PB95"
+  ]);
+};
+
+interface ExternalFuelPayload {
+  fuelPricePlnPerLiter?: number;
+  dieselPricePlnPerLiter?: number;
+  onPricePlnPerLiter?: number;
+  pb95PricePlnPerLiter?: number;
+  date?: string;
+}
+
+const resolveExternalFuelPayloadPrice = (
+  payload: ExternalFuelPayload,
+  fuelType: FuelType
+): number | undefined => {
+  if (fuelType === "on") {
+    return (
+      payload.onPricePlnPerLiter ??
+      payload.dieselPricePlnPerLiter ??
+      payload.fuelPricePlnPerLiter
+    );
+  }
+
+  return payload.pb95PricePlnPerLiter ?? payload.fuelPricePlnPerLiter;
+};
+
+const fetchFuelFromCustomEndpoint = async (input: {
+  endpoint: string;
+  fuelType: FuelType;
+}): Promise<FuelPriceResult> => {
+  const payload = await fetchJson<ExternalFuelPayload>(input.endpoint);
+  const price = resolveExternalFuelPayloadPrice(payload, input.fuelType);
+
+  if (!price) {
+    throw new Error("Fuel API payload is missing fuel price");
   }
 
   return {
-    dieselPricePlnPerLiter: roundTo2(payload.dieselPricePlnPerLiter),
+    fuelType: input.fuelType,
+    fuelPricePlnPerLiter: roundTo2(price),
     source: "external-fuel-api",
     date: payload.date ?? new Date().toISOString(),
     fallbackUsed: false
   };
 };
 
-const fetchFuelFromPublicFeed = async (): Promise<FuelPriceResult> => {
+const fetchFuelFromPublicFeed = async (
+  fuelType: FuelType
+): Promise<FuelPriceResult> => {
   const html = await fetchText(PUBLIC_FUEL_SOURCE_URL);
-  const dieselEurPerLiter = parseDieselEurPerLiter(html);
-  if (!dieselEurPerLiter) {
-    throw new Error("Fuel API payload is missing dieselPricePlnPerLiter");
+  const fuelEurPerLiter = parseFuelEurPerLiter(html, fuelType);
+  if (!fuelEurPerLiter) {
+    throw new Error("Fuel API payload is missing fuel price");
   }
 
   const rate = await getPlnToEurRate();
-  const dieselPricePlnPerLiter = roundTo2(dieselEurPerLiter * rate.plnToEurRate);
+  const fuelPricePlnPerLiter = roundTo2(fuelEurPerLiter * rate.plnToEurRate);
   const date = parseDateFromFuelPage(html);
 
   return {
-    dieselPricePlnPerLiter,
+    fuelType,
+    fuelPricePlnPerLiter,
     source: `fuel-prices-eu+${rate.source}`,
     date,
     fallbackUsed: false,
@@ -152,25 +219,35 @@ const fetchFuelFromPublicFeed = async (): Promise<FuelPriceResult> => {
   };
 };
 
-const fetchFuelFromExternalSource = async (): Promise<FuelPriceResult> => {
+const fetchFuelFromExternalSource = async (
+  fuelType: FuelType
+): Promise<FuelPriceResult> => {
   const endpoint = getAppEnv().fuelApiEndpoint;
 
   if (endpoint && endpoint.trim().length > 0) {
-    return fetchFuelFromCustomEndpoint(endpoint);
+    return fetchFuelFromCustomEndpoint({ endpoint, fuelType });
   }
 
-  return fetchFuelFromPublicFeed();
+  return fetchFuelFromPublicFeed(fuelType);
 };
 
 const getFuelTtlMs = (): number =>
   minutesToMs(getAppEnv().fuelCacheTtlMin, 6 * 60);
 
-export const getDieselPrice = async (
-  manualPrice?: number
-): Promise<FuelPriceResult> => {
+const buildFuelCacheKey = (fuelType: FuelType): string =>
+  `${FUEL_CACHE_KEY_PREFIX}:${fuelType}`;
+
+export const getFuelPrice = async (input?: {
+  fuelType?: FuelType;
+  manualPrice?: number;
+}): Promise<FuelPriceResult> => {
+  const fuelType = input?.fuelType ?? "on";
+  const manualPrice = input?.manualPrice;
+
   if (typeof manualPrice === "number" && Number.isFinite(manualPrice)) {
     return {
-      dieselPricePlnPerLiter: roundTo2(manualPrice),
+      fuelType,
+      fuelPricePlnPerLiter: roundTo2(manualPrice),
       source: "manual",
       date: new Date().toISOString(),
       fallbackUsed: false
@@ -178,10 +255,10 @@ export const getDieselPrice = async (
   }
 
   if (!getAppEnv().enableExternalFuel) {
-    return fallbackFuelPrice();
+    return fallbackFuelPrice(fuelType);
   }
 
-  const cachedFuel = readRuntimeCache<FuelPriceResult>(FUEL_CACHE_KEY);
+  const cachedFuel = readRuntimeCache<FuelPriceResult>(buildFuelCacheKey(fuelType));
   if (cachedFuel) {
     return {
       ...cachedFuel,
@@ -190,11 +267,17 @@ export const getDieselPrice = async (
   }
 
   try {
-    const fetchedFuel = await fetchFuelFromExternalSource();
-    writeRuntimeCache(FUEL_CACHE_KEY, fetchedFuel, getFuelTtlMs());
+    const fetchedFuel = await fetchFuelFromExternalSource(fuelType);
+    writeRuntimeCache(buildFuelCacheKey(fuelType), fetchedFuel, getFuelTtlMs());
     return fetchedFuel;
   } catch (error) {
     const reason = mapFuelError(error);
-    return fallbackFuelPrice(reason);
+    return fallbackFuelPrice(fuelType, reason);
   }
 };
+
+// Backward compatibility for existing imports/tests.
+export const getDieselPrice = async (
+  manualPrice?: number
+): Promise<FuelPriceResult> =>
+  getFuelPrice({ fuelType: "on", manualPrice });

@@ -32,6 +32,7 @@ const Row = ({
 
 export const CostBreakdown = ({ quote }: CostBreakdownProps) => {
   const { breakdown, route, fuel, currency } = quote;
+  const fuelLabel = fuel.fuelType === "pb95" ? "PB95" : "ON";
 
   return (
     <section className="glass-card rounded-[24px] p-4">
@@ -75,7 +76,7 @@ export const CostBreakdown = ({ quote }: CostBreakdownProps) => {
 
       <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs text-slate-600">
         <p>
-          Paliwo: {fuel.source} ({formatCurrency(fuel.dieselPricePlnPerLiter, "PLN")} / l)
+          Paliwo ({fuelLabel}): {fuel.source} ({formatCurrency(fuel.fuelPricePlnPerLiter, "PLN")} / l)
         </p>
         <p>
           Kurs EUR/PLN: {currency.source} ({currency.plnToEurRate.toFixed(2)}) z dnia{" "}

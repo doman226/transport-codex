@@ -3,6 +3,7 @@ import type { VehicleType } from "@/types/vehicles";
 export type TransportType = "domestic" | "international";
 export type OfferCurrency = "PLN" | "EUR";
 export type MarginType = "percent" | "amount";
+export type FuelType = "on" | "pb95";
 
 export interface RoutePoint {
   lat: number;
@@ -29,7 +30,8 @@ export interface GeocodedAddress {
 }
 
 export interface FuelPriceResult {
-  dieselPricePlnPerLiter: number;
+  fuelType: FuelType;
+  fuelPricePlnPerLiter: number;
   source: string;
   date: string;
   fallbackUsed: boolean;
@@ -68,6 +70,7 @@ export interface QuoteInput {
   requiresCrane: boolean;
   marginType: MarginType;
   marginValue: number;
+  fuelType: FuelType;
   extraOperationalCostPln: number;
   manualDistanceKm?: number;
   manualTollCostPln?: number;

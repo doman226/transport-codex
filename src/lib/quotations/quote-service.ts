@@ -1,6 +1,6 @@
 import { calculateCostBreakdown } from "@/lib/calculators/cost-calculator";
 import { getPlnToEurRate } from "@/lib/currencies/currency-provider";
-import { getDieselPrice } from "@/lib/fuel/fuel-provider";
+import { getFuelPrice } from "@/lib/fuel/fuel-provider";
 import { geocodeAddress } from "@/lib/routes/geocoding-provider";
 import { calculateRoute } from "@/lib/routes/routing-provider";
 import { estimateTollCost } from "@/lib/routes/toll-provider";
@@ -53,7 +53,10 @@ export const calculateTransportQuote = async (
   const route = buildRouteForCalculation(routeBase, input.manualDistanceKm);
 
   const [fuel, currency] = await Promise.all([
-    getDieselPrice(input.manualFuelPricePln),
+    getFuelPrice({
+      fuelType: input.fuelType,
+      manualPrice: input.manualFuelPricePln
+    }),
     getPlnToEurRate(input.manualExchangeRate)
   ]);
 
@@ -71,7 +74,7 @@ export const calculateTransportQuote = async (
     transportType: input.transportType,
     distanceKm: route.distanceKm,
     durationMin: route.durationMin,
-    fuelPricePlnPerLiter: fuel.dieselPricePlnPerLiter,
+    fuelPricePlnPerLiter: fuel.fuelPricePlnPerLiter,
     tollCostPlnOverride: toll.amountPln,
     marginType: input.marginType,
     marginValue:
