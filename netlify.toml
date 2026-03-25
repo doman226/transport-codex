@@ -4,16 +4,5 @@
 
 [build.environment]
   NODE_VERSION = "20"
-  NPM_FLAGS = "--no-fund --no-audit"
-
-[context.production.environment]
-  NODE_ENV = "production"
-  HEALTHCHECK_WITH_DB = "false"
-
-[context.deploy-preview.environment]
-  NODE_ENV = "production"
-  HEALTHCHECK_WITH_DB = "false"
-
-[context.branch-deploy.environment]
-  NODE_ENV = "production"
+  NPM_FLAGS = "--include=dev --no-fund --no-audit"
   HEALTHCHECK_WITH_DB = "false"
