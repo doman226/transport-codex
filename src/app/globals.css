@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-body: "Plus Jakarta Sans", sans-serif;
+  --font-heading: "Space Grotesk", sans-serif;
+  --bg-0: #f5f8fc;
+  --bg-1: #e8f1fb;
+  --bg-2: #d9e7f6;
+  --ink-0: #0f2238;
+  --ink-1: #2e4761;
+  --line: #d5e3f3;
+  --card: rgba(255, 255, 255, 0.86);
+  --brand: #0c5fa8;
+  --brand-dark: #08487f;
+  --accent: #dd8a2e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  color: var(--ink-0);
+  font-family: var(--font-body);
+}
+
+body {
+  background:
+    radial-gradient(circle at 5% 10%, var(--bg-2) 0%, transparent 36%),
+    radial-gradient(circle at 90% 0%, #eef5ff 0%, transparent 40%),
+    linear-gradient(155deg, var(--bg-0), #f7fbff 52%, #f3f9ff);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+  letter-spacing: -0.015em;
+}
+
+::selection {
+  background: rgba(12, 95, 168, 0.2);
+}
+
+@layer components {
+  .glass-card {
+    border: 1px solid var(--line);
+    background: var(--card);
+    box-shadow:
+      0 22px 55px -36px rgba(15, 34, 56, 0.55),
+      inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(8px);
+  }
+}

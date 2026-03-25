@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model VehicleType {
+  id                          String   @id
+  name                        String
+  payloadKg                   Float
+  maxLengthM                  Float
+  avgFuelConsumptionPer100Km  Float
+  costPerKm                   Float
+  driverCostPerHour           Float
+  driverCostPerDay            Float
+  driverCostPerKm             Float
+  driverCostModel             String
+  avgOperationalSpeedKmh      Float
+  tollCostPerKmDomestic       Float
+  tollCostPerKmInternational  Float
+  stopCostPln                 Float
+  defaultMarginPercent        Float
+  active                      Boolean  @default(true)
+  quotes                      Quote[]
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+}
+
+model Quote {
+  id                    String      @id @default(cuid())
+  createdAt             DateTime    @default(now())
+  customerName          String?
+  loadAddress           String
+  unloadAddress         String
+  loadCountry           String
+  unloadCountry         String
+  loadLat               Float
+  loadLng               Float
+  unloadLat             Float
+  unloadLng             Float
+  distanceKm            Float
+  durationMin           Float
+  vehicleTypeId         String
+  transportType         String
+  loadWeightKg          Float
+  loadLengthM           Float
+  itemsCount            Int
+  isOversize            Boolean
+  requiresPermit        Boolean
+  requiresCrane         Boolean
+  currency              String
+  exchangeRate          Float
+  exchangeRateDate      String
+  fuelPrice             Float
+  fuelPriceDate         String
+  fuelSource            String
+  currencySource        String
+  fuelCost              Float
+  tollCost              Float
+  driverCost            Float
+  fixedVehicleCost      Float
+  stopCost              Float
+  extraCost             Float
+  marginAmount          Float
+  totalNetPln           Float
+  totalNetEur           Float
+  notes                 String?
+  vehicleType           VehicleType @relation(fields: [vehicleTypeId], references: [id])
+}
+
+model Settings {
+  id                    String   @id @default(cuid())
+  defaultCurrency       String   @default("PLN")
+  defaultFuelSource     String   @default("fallback-static")
+  defaultCurrencySource String   @default("nbp")
+  companyName           String?
+  companyAddress        String?
+  vatRate               Float    @default(23)
+  fallbackFuelPrice     Float    @default(6.85)
+  fallbackExchangeRate  Float    @default(4.35)
+  permitCostPln         Float    @default(500)
+  oversizeSurchargePln  Float    @default(700)
+  craneCostPln          Float    @default(600)
+  updatedAt             DateTime @updatedAt
+}

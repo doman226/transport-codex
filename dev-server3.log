@@ -1,0 +1,16 @@
+
+> transport-codex@0.1.0 dev
+> next dev -p 3003
+
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3003
+  - Environments: .env
+  - Experiments (use with caution):
+    · typedRoutes
+
+ ✓ Starting...
+ ✓ Ready in 1908ms
+ ○ Compiling / ...
+ ✓ Compiled / in 8s (612 modules)
+ GET / 200 in 8594ms
+^C
