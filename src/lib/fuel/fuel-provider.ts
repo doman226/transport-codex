@@ -143,6 +143,9 @@ export const parseFuelEurPerLiter = (
   }
 
   return findPriceByKeywords(html, [
+    "EUROSUPER\\s*95",
+    "EURO\\s*95",
+    "E95",
     "PREMIUM UNLEADED 95",
     "UNLEADED 95",
     "GASOLINE 95",
@@ -198,25 +201,46 @@ const fetchFuelFromPublicFeed = async (
   fuelType: FuelType
 ): Promise<FuelPriceResult> => {
   const html = await fetchText(PUBLIC_FUEL_SOURCE_URL);
+  const rate = await getPlnToEurRate();
+  const date = parseDateFromFuelPage(html);
   const fuelEurPerLiter = parseFuelEurPerLiter(html, fuelType);
-  if (!fuelEurPerLiter) {
-    throw new Error("Fuel API payload is missing fuel price");
+
+  if (fuelEurPerLiter) {
+    const fuelPricePlnPerLiter = roundTo2(fuelEurPerLiter * rate.plnToEurRate);
+
+    return {
+      fuelType,
+      fuelPricePlnPerLiter,
+      source: `fuel-prices-eu+${rate.source}`,
+      date,
+      fallbackUsed: false,
+      message: rate.fallbackUsed
+        ? "Cena paliwa z internetu; przeliczenie EUR->PLN wykonano kursem fallback."
+        : undefined
+    };
   }
 
-  const rate = await getPlnToEurRate();
-  const fuelPricePlnPerLiter = roundTo2(fuelEurPerLiter * rate.plnToEurRate);
-  const date = parseDateFromFuelPage(html);
+  if (fuelType === "pb95") {
+    const dieselEurPerLiter = parseFuelEurPerLiter(html, "on");
+    if (dieselEurPerLiter) {
+      const dieselPlnPerLiter = roundTo2(dieselEurPerLiter * rate.plnToEurRate);
+      const estimatedPb95PlnPerLiter = roundTo2(
+        dieselPlnPerLiter + PB95_FALLBACK_DELTA_PLN
+      );
 
-  return {
-    fuelType,
-    fuelPricePlnPerLiter,
-    source: `fuel-prices-eu+${rate.source}`,
-    date,
-    fallbackUsed: false,
-    message: rate.fallbackUsed
-      ? "Cena paliwa z internetu; przeliczenie EUR->PLN wykonano kursem fallback."
-      : undefined
-  };
+      return {
+        fuelType,
+        fuelPricePlnPerLiter: estimatedPb95PlnPerLiter,
+        source: `fuel-prices-eu+${rate.source}-pb95-estimated`,
+        date,
+        fallbackUsed: true,
+        message:
+          "Brak odczytu PB95 w zrodle publicznym. Zastosowano estymacje PB95 = ON + 0.35 PLN/l."
+      };
+    }
+  }
+
+  throw new Error("Fuel API payload is missing fuel price");
 };
 
 const fetchFuelFromExternalSource = async (

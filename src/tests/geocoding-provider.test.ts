@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { EUROPEAN_COUNTRIES } from "@/lib/locations/european-countries";
 import {
   geocodeAddress,
   getFallbackAddressSuggestions,
@@ -14,7 +15,7 @@ describe("geocoding fallback suggestions", () => {
     const result = getFallbackAddressSuggestions("pozn", "PL", 5);
 
     expect(result.length).toBeGreaterThan(0);
-    expect(result[0].displayName.toLowerCase()).toContain("poznan");
+    expect(result[0].displayName.toLowerCase()).toContain("pozna");
     expect(result[0].fallbackUsed).toBe(true);
   });
 
@@ -42,6 +43,24 @@ describe("geocoding fallback suggestions", () => {
 
     expect(result.length).toBeGreaterThan(0);
     expect(result[0].displayName.toLowerCase()).toContain("bukareszt");
+  });
+
+  it("supports Łotwa aliases and Ryga suggestions", () => {
+    const resultByName = getFallbackAddressSuggestions("ryg", "Łotwa", 5);
+    const resultByCode = getFallbackAddressSuggestions("riga", "LV", 5);
+
+    expect(resultByName.length).toBeGreaterThan(0);
+    expect(resultByName[0].displayName.toLowerCase()).toContain("ryga");
+    expect(resultByCode.length).toBeGreaterThan(0);
+    expect(resultByCode[0].displayName.toLowerCase()).toContain("ryga");
+  });
+
+  it("returns country-center fallback suggestion when city dictionary has no match", () => {
+    const result = getFallbackAddressSuggestions("NieznaneMiasto", "Hiszpania", 5);
+
+    expect(result.length).toBe(1);
+    expect(result[0].source).toBe("fallback-country-center");
+    expect(result[0].displayName.toLowerCase()).toContain("hiszpania");
   });
 
   it("resolves common country aliases to ISO code", () => {
@@ -78,5 +97,32 @@ describe("geocoding fallback suggestions", () => {
     expect(result.source).toBe("fallback-city-center-global");
     expect(result.lat).toBeGreaterThan(44);
     expect(result.lng).toBeGreaterThan(26);
+  });
+
+  it("uses city-center fallback for Łotwa and Ryga", async () => {
+    vi.stubEnv("ENABLE_EXTERNAL_GEOCODING", "false");
+
+    const result = await geocodeAddress({
+      address: "Ryga",
+      country: "Łotwa"
+    });
+
+    expect(result.source).toBe("fallback-city-center");
+    expect(result.lat).toBeGreaterThan(56);
+    expect(result.lng).toBeGreaterThan(24);
+  });
+
+  it("supports deterministic fallback geocoding for all european countries", async () => {
+    vi.stubEnv("ENABLE_EXTERNAL_GEOCODING", "false");
+
+    for (const country of EUROPEAN_COUNTRIES) {
+      const result = await geocodeAddress({
+        address: "MiastoTestoweXYZ",
+        country: country.name
+      });
+
+      expect(Number.isFinite(result.lat)).toBe(true);
+      expect(Number.isFinite(result.lng)).toBe(true);
+    }
   });
 });

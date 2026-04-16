@@ -6,7 +6,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { AddressAutocompleteInput } from "@/components/forms/address-autocomplete-input";
+import { CountryAutocompleteInput } from "@/components/forms/country-autocomplete-input";
 import { CostBreakdown } from "@/components/pricing/cost-breakdown";
+import { resolveEuropeanCountryCode } from "@/lib/locations/european-countries";
 import { quoteInputSchema } from "@/lib/validation/quote-schema";
 import { DEFAULT_VEHICLES } from "@/lib/vehicles/default-vehicles";
 import type { QuoteResult } from "@/types/quote";
@@ -17,8 +19,8 @@ const RouteMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-[360px] items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-sm text-slate-500">
-        Ladowanie mapy...
+      <div className="flex h-[420px] items-center justify-center rounded-[24px] border border-brand-300/30 bg-brand-900/80 text-sm text-brand-50">
+        Ładowanie mapy...
       </div>
     )
   }
@@ -27,13 +29,12 @@ const RouteMap = dynamic(
 type QuoteFormValues = z.input<typeof quoteInputSchema>;
 
 const inputClassName =
-  "mt-1 w-full rounded-xl border border-slate-300/90 bg-white/90 px-3.5 py-2.5 text-sm text-slate-900 shadow-[0_1px_0_rgba(255,255,255,0.8)] outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100";
+  "mt-2 w-full rounded-[18px] border border-brand-100 bg-white px-4 py-3 text-sm text-brand-900 shadow-[0_8px_22px_-18px_rgba(16,36,95,0.35)] outline-none transition placeholder:text-brand-300 hover:border-brand-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-100";
 
-const sectionClassName =
-  "rounded-2xl border border-slate-200/90 bg-white/75 p-4 md:p-5";
+const sectionClassName = "workspace-panel rounded-[24px] p-4 md:p-5";
 
 const Label = ({ children }: { children: React.ReactNode }) => (
-  <label className="text-sm font-medium text-slate-700">{children}</label>
+  <label className="text-sm font-semibold text-brand-700">{children}</label>
 );
 
 export const TransportQuoteForm = () => {
@@ -50,8 +51,8 @@ export const TransportQuoteForm = () => {
       customerName: "",
       loadAddress: "",
       unloadAddress: "",
-      loadCountry: "PL",
-      unloadCountry: "PL",
+      loadCountry: "Polska",
+      unloadCountry: "Polska",
       transportType: "domestic",
       vehicleTypeId: DEFAULT_VEHICLES[0]?.id,
       loadWeightKg: 12000,
@@ -113,11 +114,22 @@ export const TransportQuoteForm = () => {
     setLoading(true);
     setApiError(null);
 
+    const loadCountryCode = resolveEuropeanCountryCode(values.loadCountry);
+    const unloadCountryCode = resolveEuropeanCountryCode(values.unloadCountry);
+
+    if (!loadCountryCode || !unloadCountryCode) {
+      setApiError("Wybierz kraj startu i dostawy z listy krajów europejskich.");
+      setLoading(false);
+      return;
+    }
+
     const normalizedValues = {
       ...values,
+      loadCountry: loadCountryCode,
+      unloadCountry: unloadCountryCode,
       transportType:
-        values.loadCountry.toUpperCase() === "PL" &&
-        values.unloadCountry.toUpperCase() === "PL"
+        loadCountryCode === "PL" &&
+        unloadCountryCode === "PL"
           ? "domestic"
           : "international"
     };
@@ -133,14 +145,14 @@ export const TransportQuoteForm = () => {
 
       if (!response.ok) {
         const errorPayload = (await response.json()) as { message?: string };
-        throw new Error(errorPayload.message ?? "Nie udalo sie policzyc wyceny.");
+        throw new Error(errorPayload.message ?? "Nie udało się policzyć wyceny.");
       }
 
       const result = (await response.json()) as QuoteResult;
       setQuote(result);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Wystapil nieznany blad.";
+        error instanceof Error ? error.message : "Wystąpił nieznany błąd.";
       setApiError(message);
       setQuote(null);
     } finally {
@@ -149,24 +161,27 @@ export const TransportQuoteForm = () => {
   });
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
-      <section className="glass-card rounded-[28px] p-5 md:p-7">
-        <header className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-4">
+    <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.08fr)_minmax(600px,0.92fr)]">
+      <section className="workspace-panel rounded-[28px] p-5 md:p-6">
+        <header className="flex flex-wrap items-end justify-between gap-3 border-b border-brand-100 pb-5">
           <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Nowa wycena</h2>
-            <p className="mt-1 text-sm text-slate-600">
-              Uzupelnij dane trasy i ladunku, a system policzy wynik z pelnym
-              rozbiciem kosztow.
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand-500">
+              Formularz operacyjny
+            </p>
+            <h2 className="mt-2 text-3xl font-semibold text-brand-900">Nowa wycena</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-brand-600">
+              Uzupełnij te same dane trasy i ładunku co dotychczas. Zmienił się wyłącznie
+              wygląd oraz sposób wykorzystania szerokości ekranu.
             </p>
           </div>
-          <p className="rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-semibold text-slate-600">
-            Formularz MVP
+          <p className="rounded-full border border-accent-500/40 bg-accent-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-accent-700">
+            Ten sam flow
           </p>
         </header>
 
         <form className="mt-5 grid gap-4" onSubmit={onSubmit}>
           <section className={sectionClassName}>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-500">
               Dane podstawowe
             </h3>
             <div className="mt-3 grid gap-4 md:grid-cols-2">
@@ -202,8 +217,8 @@ export const TransportQuoteForm = () => {
           </section>
 
           <section className={sectionClassName}>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Trasa i przewoz
+            <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-500">
+              Trasa i przewóz
             </h3>
             <div className="mt-3 grid gap-4 md:grid-cols-2">
               <Controller
@@ -211,10 +226,10 @@ export const TransportQuoteForm = () => {
                 name="loadAddress"
                 render={({ field }) => (
                   <AddressAutocompleteInput
-                    label="Adres zaladunku"
-                    placeholder="np. Poznan, ul. Przemyslowa 1"
+                    label="Adres załadunku"
+                    placeholder="np. Poznań, ul. Przemysłowa 1"
                     value={field.value ?? ""}
-                    countryCode={watchedLoadCountry ?? "PL"}
+                    countryCode={resolveEuropeanCountryCode(watchedLoadCountry) ?? "PL"}
                     className={inputClassName}
                     onChange={field.onChange}
                   />
@@ -225,10 +240,10 @@ export const TransportQuoteForm = () => {
                 name="unloadAddress"
                 render={({ field }) => (
                   <AddressAutocompleteInput
-                    label="Adres rozladunku"
-                    placeholder="np. Bialystok, ul. Produkcyjna 4"
+                    label="Adres rozładunku"
+                    placeholder="np. Białystok, ul. Produkcyjna 4"
                     value={field.value ?? ""}
-                    countryCode={watchedUnloadCountry ?? "PL"}
+                    countryCode={resolveEuropeanCountryCode(watchedUnloadCountry) ?? "PL"}
                     className={inputClassName}
                     onChange={field.onChange}
                   />
@@ -237,19 +252,37 @@ export const TransportQuoteForm = () => {
             </div>
 
             <div className="mt-4 grid gap-4 md:grid-cols-4">
-              <Label>
-                Kraj startu
-                <input className={inputClassName} {...form.register("loadCountry")} />
-              </Label>
-              <Label>
-                Kraj dostawy
-                <input className={inputClassName} {...form.register("unloadCountry")} />
-              </Label>
+              <Controller
+                control={form.control}
+                name="loadCountry"
+                render={({ field }) => (
+                  <CountryAutocompleteInput
+                    label="Kraj startu"
+                    placeholder="np. Polska"
+                    value={field.value ?? ""}
+                    className={inputClassName}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+              <Controller
+                control={form.control}
+                name="unloadCountry"
+                render={({ field }) => (
+                  <CountryAutocompleteInput
+                    label="Kraj dostawy"
+                    placeholder="np. Niemcy"
+                    value={field.value ?? ""}
+                    className={inputClassName}
+                    onChange={field.onChange}
+                  />
+                )}
+              />
               <Label>
                 Typ przewozu
                 <select className={inputClassName} {...form.register("transportType")}>
                   <option value="domestic">Krajowy</option>
-                  <option value="international">Miedzynarodowy</option>
+                  <option value="international">Międzynarodowy</option>
                 </select>
               </Label>
               <Label>
@@ -265,12 +298,12 @@ export const TransportQuoteForm = () => {
           </section>
 
           <section className={sectionClassName}>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-              Ladunek i wycena
+            <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-500">
+              Ładunek i wycena
             </h3>
             <div className="mt-3 grid gap-4 md:grid-cols-2">
               <Label>
-                Waga ladunku [kg]
+                Waga ładunku [kg]
                 <input
                   type="number"
                   min={1}
@@ -279,7 +312,7 @@ export const TransportQuoteForm = () => {
                 />
               </Label>
               <Label>
-                Dlugosc elementow [m]
+                Długość elementów [m]
                 <input
                   type="number"
                   min={0.1}
@@ -290,16 +323,16 @@ export const TransportQuoteForm = () => {
               </Label>
             </div>
 
-            <div className="mt-4 grid gap-4 md:grid-cols-5">
+            <div className="mt-4 grid gap-4 xl:grid-cols-5">
               <Label>
-                Marza
+                Marża
                 <select className={inputClassName} {...form.register("marginType")}>
                   <option value="percent">Procent [%]</option>
                   <option value="amount">Kwota [PLN]</option>
                 </select>
               </Label>
               <Label>
-                Wartosc marzy
+                Wartość marży
                 <input
                   type="number"
                   min={0}
@@ -319,7 +352,7 @@ export const TransportQuoteForm = () => {
                 />
               </Label>
               <Label>
-                Reczny dystans [km]
+                Ręczny dystans [km]
                 <input
                   type="number"
                   min={1}
@@ -332,7 +365,7 @@ export const TransportQuoteForm = () => {
                 />
               </Label>
               <Label>
-                Reczna oplata drogowa [PLN]
+                Ręczna opłata drogowa [PLN]
                 <input
                   type="number"
                   min={0}
@@ -346,7 +379,7 @@ export const TransportQuoteForm = () => {
               </Label>
             </div>
 
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <Label>
                 Rodzaj paliwa
                 <select className={inputClassName} {...form.register("fuelType")}>
@@ -355,7 +388,7 @@ export const TransportQuoteForm = () => {
                 </select>
               </Label>
               <Label>
-                Reczna cena paliwa [PLN/l]
+                Ręczna cena paliwa [PLN/l]
                 <input
                   type="number"
                   min={0.1}
@@ -368,7 +401,7 @@ export const TransportQuoteForm = () => {
                 />
               </Label>
               <Label>
-                Reczny kurs EUR/PLN
+                Ręczny kurs EUR/PLN
                 <input
                   type="number"
                   min={0.1}
@@ -384,33 +417,45 @@ export const TransportQuoteForm = () => {
           </section>
 
           <section className={sectionClassName}>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-500">
               Opcje dodatkowe
             </h3>
-            <div className="mt-3 grid gap-2 text-sm text-slate-700">
+            <div className="mt-3 grid gap-2 text-sm text-brand-700">
               <label className="inline-flex items-center gap-2">
-                <input type="checkbox" {...form.register("isOversize")} />
-                Ladunek ponadgabarytowy
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-brand-300 text-accent-500 focus:ring-accent-100"
+                  {...form.register("isOversize")}
+                />
+                Ładunek ponadgabarytowy
               </label>
               <label className="inline-flex items-center gap-2">
-                <input type="checkbox" {...form.register("requiresPermit")} />
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-brand-300 text-accent-500 focus:ring-accent-100"
+                  {...form.register("requiresPermit")}
+                />
                 Wymaga zezwolenia
               </label>
               <label className="inline-flex items-center gap-2">
-                <input type="checkbox" {...form.register("requiresCrane")} />
-                Wymaga HDS / dzwigu
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-brand-300 text-accent-500 focus:ring-accent-100"
+                  {...form.register("requiresCrane")}
+                />
+                Wymaga HDS / dźwigu
               </label>
             </div>
           </section>
 
           {Object.keys(form.formState.errors).length > 0 ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-              Sprawdz formularz: czesc pol zawiera niepoprawne dane.
+            <div className="rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              Sprawdź formularz: część pól zawiera niepoprawne dane.
             </div>
           ) : null}
 
           {apiError ? (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <div className="rounded-[20px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {apiError}
             </div>
           ) : null}
@@ -418,17 +463,19 @@ export const TransportQuoteForm = () => {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-xl bg-gradient-to-r from-brand-700 to-brand-900 px-5 py-3 text-sm font-semibold tracking-wide text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+            className="rounded-[20px] border border-brand-700 bg-gradient-to-r from-brand-700 via-brand-700 to-brand-900 px-6 py-4 text-sm font-semibold uppercase tracking-[0.1em] text-white shadow-[0_18px_34px_-20px_rgba(16,36,95,0.72)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {loading ? "Liczenie wyceny..." : "Oblicz wycene"}
+            {loading ? "Liczenie wyceny..." : "Oblicz wycenę"}
           </button>
         </form>
 
         {selectedVehicle ? (
-          <aside className="mt-4 rounded-xl border border-brand-100 bg-brand-50/70 p-3 text-sm text-brand-900">
-            <p className="font-semibold">Parametry wybranego pojazdu</p>
-            <p className="mt-1">
-              Ladownosc: {selectedVehicle.payloadKg} kg | Maks. dlugosc:{" "}
+          <aside className="mt-4 rounded-[22px] border border-brand-100 bg-gradient-to-r from-brand-50 to-white px-4 py-3 text-sm text-brand-900">
+            <p className="font-semibold uppercase tracking-[0.12em] text-brand-600">
+              Parametry wybranego pojazdu
+            </p>
+            <p className="mt-2 leading-6">
+              Ładowność: {selectedVehicle.payloadKg} kg | Maks. długość:{" "}
               {selectedVehicle.maxLengthM} m | Spalanie:{" "}
               {selectedVehicle.avgFuelConsumptionPer100Km} l/100 km
             </p>
@@ -436,10 +483,10 @@ export const TransportQuoteForm = () => {
         ) : null}
       </section>
 
-      <section className="flex flex-col gap-4 xl:sticky xl:top-6 xl:self-start">
+      <section className="flex flex-col gap-4 xl:sticky xl:top-4 xl:self-start">
         {quote ? (
           <>
-            <section className="glass-card rounded-[24px] p-3">
+            <section className="workspace-panel-dark rounded-[28px] p-4">
               <RouteMap
                 geometry={quote.route.geometry}
                 start={{
@@ -455,9 +502,9 @@ export const TransportQuoteForm = () => {
 
             <CostBreakdown quote={quote} />
 
-            <section className="glass-card rounded-[24px] p-4">
-              <h3 className="text-lg font-semibold text-slate-900">Status danych</h3>
-              <ul className="mt-2 space-y-1 text-sm text-slate-700">
+            <section className="workspace-panel-dark rounded-[28px] p-5 text-white">
+              <h3 className="text-lg font-semibold">Status danych</h3>
+              <ul className="mt-3 space-y-2 text-sm text-brand-50/88">
                 <li>
                   Trasa: {quote.route.source}
                   {quote.route.fallbackUsed ? " (fallback)" : ""}
@@ -475,7 +522,7 @@ export const TransportQuoteForm = () => {
                   {quote.fuel.fallbackUsed ? " (fallback)" : ""}
                 </li>
                 <li>
-                  Oplaty drogowe: {quote.toll.source}
+                  Opłaty drogowe: {quote.toll.source}
                   {quote.toll.fallbackUsed ? " (fallback)" : ""}
                 </li>
                 <li>
@@ -490,7 +537,7 @@ export const TransportQuoteForm = () => {
                 quote.fuel.message ||
                 quote.toll.message ||
                 quote.currency.message) && (
-                <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+                <div className="mt-4 rounded-[20px] border border-accent-500/45 bg-accent-500/10 p-4 text-xs leading-5 text-brand-50">
                   <p>{quote.route.message}</p>
                   <p>{quote.loadLocation.message}</p>
                   <p>{quote.unloadLocation.message}</p>
@@ -502,20 +549,20 @@ export const TransportQuoteForm = () => {
 
               {(quote.warnings.vehicleLengthExceeded ||
                 quote.warnings.vehiclePayloadExceeded) && (
-                <div className="mt-3 rounded-xl border border-red-300 bg-red-50 p-3 text-xs text-red-800">
+                <div className="mt-4 rounded-[20px] border border-red-300/70 bg-red-500/12 p-4 text-xs leading-5 text-red-100">
                   {quote.warnings.vehicleLengthExceeded && (
-                    <p>Dlugosc ladunku przekracza parametr wybranego pojazdu.</p>
+                    <p>Długość ładunku przekracza parametr wybranego pojazdu.</p>
                   )}
                   {quote.warnings.vehiclePayloadExceeded && (
-                    <p>Masa ladunku przekracza ladownosc wybranego pojazdu.</p>
+                    <p>Masa ładunku przekracza ładowność wybranego pojazdu.</p>
                   )}
                 </div>
               )}
             </section>
           </>
         ) : (
-          <div className="glass-card flex min-h-[360px] items-center justify-center rounded-[24px] border border-dashed p-6 text-center text-sm text-slate-600">
-            Wynik wyceny pojawi sie tutaj po wyslaniu formularza.
+          <div className="workspace-panel-dark flex min-h-[680px] items-center justify-center rounded-[28px] border border-brand-300/20 p-8 text-center text-sm leading-6 text-brand-50/82">
+            Wynik wyceny i wieksza mapa pojawia sie tutaj po wyslaniu formularza.
           </div>
         )}
       </section>

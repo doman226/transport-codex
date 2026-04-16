@@ -57,7 +57,7 @@ describe("fuel provider", () => {
 
   it("parses PB95 EUR value from public feed html", () => {
     const sampleHtml = `
-      <div>PREMIUM UNLEADED 95</div>
+      <div>EUROSUPER 95</div>
       <div>&euro;1.571</div>
       <div>[ UPDATED: 2026-03-02 ]</div>
     `;

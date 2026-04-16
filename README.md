@@ -1,134 +1,165 @@
-# Transport Codex MVP
+# Transport Codex
 
-Aplikacja webowa do wyceny kosztów transportu elementów stalowych.
+Kalkulator kosztow transportu dla Intra B.V. Aplikacja pomaga szybko przygotowac wycene przewozu elementow stalowych: liczy trase, koszt paliwa, oplaty drogowe, koszt kierowcy, marze oraz wynik netto w PLN i EUR.
 
-Projekt realizuje MVP zgodnie z:
-- `AGENTS.md`
-- `docs/PROJECT_SPEC.md`
-- `docs/IMPLEMENTATION_PLAN.md`
+Live demo: [https://intratrans.netlify.app](https://intratrans.netlify.app)
 
-## Deploy (GitHub + Netlify)
+## Co robi aplikacja
 
-Krok po kroku:
-- `docs/DEPLOY_NETLIFY.md`
+- obsluguje formularz wyceny na jednym ekranie,
+- wyznacza trase i pokazuje ja na mapie OpenStreetMap,
+- geokoduje adresy zaladunku i rozladunku,
+- wspiera pelne nazwy krajow europejskich z podpowiedziami,
+- obsluguje polskie znaki w formularzu i wyszukiwaniu,
+- pokazuje pelne rozbicie kosztow,
+- przelicza wynik na PLN i EUR,
+- ma fallbacki dla geokodowania, routingu, paliwa i kursu walut,
+- pokazuje status zrodel danych i ostrzezenia dla operatora.
 
-Repo ma gotowa konfiguracje:
-- `netlify.toml`
+## Aktualny zakres MVP
 
-## Co działa teraz
+W obecnej wersji dziala:
 
-1. Formularz wyceny:
-- adres załadunku i rozładunku,
-- autocomplete adresów i miejscowości,
-- typ pojazdu i parametry ładunku,
-- ręczne nadpisania: dystans, paliwo, kurs, opłaty drogowe.
+- formularz wyceny transportu A-B,
+- kilka typow pojazdow z domyslnymi parametrami,
+- przewoz krajowy i miedzynarodowy,
+- reczne nadpisanie dystansu, paliwa, kursu i oplat drogowych,
+- walidacja danych formularza,
+- mapa trasy i panel kosztowy,
+- testy jednostkowe dla kalkulacji i providerow.
 
-2. Kalkulacja kosztów:
-- paliwo, opłaty drogowe, kierowca, koszt stały, postój, koszty dodatkowe,
-- marża (procent lub kwota),
-- wynik netto w PLN i EUR.
+Poza MVP lub w dalszych etapach:
 
-3. Trasa i mapa:
-- geokodowanie,
-- wyznaczanie trasy,
-- podgląd trasy na mapie OpenStreetMap (Leaflet),
-- dystans i czas przejazdu.
+- historia wycen,
+- zapis ofert do bazy jako glowny flow biznesowy,
+- eksport PDF,
+- panel administracyjny,
+- role i uprawnienia.
 
-4. Fallbacki i status źródeł:
-- fallback geokodowania, trasy, kursu walut i paliwa,
-- jawny status źródeł danych i komunikaty ostrzegawcze.
-
-## Sprint 0 (Tydzień 1) - stabilna baza produkcyjna
-
-Wdrożony zakres jest opisany w:
-- `docs/SPRINT_0_WEEK1.md`
-
-Najważniejsze elementy:
-- centralna walidacja env (`src/lib/config/env.ts`),
-- wspólny klient HTTP z timeout/retry (`src/lib/http/http-client.ts`),
-- healthcheck (`GET /api/health`),
-- `x-request-id` w odpowiedziach API,
-- bazowe nagłówki bezpieczeństwa (`next.config.mjs`),
-- skrypt jakości `npm run check`,
-- workflow CI (`.github/workflows/ci.yml`).
-
-## Założenia biznesowe (MVP)
-
-Ponieważ dokumentacja nie zawiera pełnych stawek operacyjnych, użyto wartości przykładowych w:
-- `src/lib/vehicles/default-vehicles.ts`
-- `src/lib/settings/default-settings.ts`
-
-Przykładowe wartości fallback:
-- paliwo: `6.85 PLN/l`
-- kurs EUR/PLN: `4.35`
-
-Te wartości należy traktować jako robocze i zastąpić docelowymi stawkami firmowymi.
-
-## Stack technologiczny
+## Stack
 
 - Next.js 14 (App Router)
-- TypeScript 5
+- TypeScript
 - Tailwind CSS
 - React Hook Form + Zod
-- Prisma + PostgreSQL
+- Prisma
+- PostgreSQL
 - Leaflet + OpenStreetMap
 - Vitest
 
-## Uruchomienie lokalne (Windows PowerShell)
+## Szybki start
 
-1. Wejdź do katalogu projektu:
+### Windows - najszybciej
+
+W katalogu projektu jest launcher:
+
+```bat
+start-app.bat
+```
+
+Po dwukliku albo uruchomieniu z `cmd` skrypt:
+
+- przejdzie do katalogu projektu,
+- utworzy `.env` z `.env.example`, jesli go brakuje,
+- zrobi `npm install`, jesli nie ma `node_modules`,
+- uruchomi `npm run dev`.
+
+Jesli okno zamknie sie zbyt szybko, odpal skrypt z terminala:
 
 ```powershell
 cd C:\Users\doman\Documents\transport-codex
+.\start-app.bat
 ```
 
-2. Zainstaluj zależności:
+### Recznie
 
 ```powershell
+cd C:\Users\doman\Documents\transport-codex
 npm install
-```
-
-3. Utwórz plik `.env`:
-
-```powershell
 Copy-Item .env.example .env
-```
-
-4. Uzupełnij `.env` (minimum `DATABASE_URL`; opcjonalnie `ORS_API_KEY`).
-
-5. Wygeneruj Prisma Client:
-
-```powershell
-npm run prisma:generate
-```
-
-6. Wykonaj migrację:
-
-```powershell
-npm run prisma:migrate -- --name init
-```
-
-7. Zasil bazę danymi startowymi:
-
-```powershell
-npm run prisma:seed
-```
-
-8. Uruchom aplikację:
-
-```powershell
 npm run dev
 ```
 
-9. Otwórz:
-- [http://localhost:3000](http://localhost:3000)
+Po starcie otworz:
 
-10. Sprawdź healthcheck:
+- [http://localhost:3000](http://localhost:3000)
 - [http://localhost:3000/api/health](http://localhost:3000/api/health)
 
-## Jakość i testy
+## Czy baza danych jest wymagana
 
-Szybki pełny check:
+Nie do podstawowego liczenia wyceny w obecnym MVP.
+
+Domyslny `.env.example` ma:
+
+- `HEALTHCHECK_WITH_DB=false`
+- wszystkie integracje zewnetrzne ustawione domyslnie na `false`
+
+To oznacza, ze formularz, kalkulacja i fallbacki moga dzialac lokalnie bez pelnej konfiguracji bazy i zewnetrznych API.
+
+Baza danych bedzie potrzebna, jesli chcesz pracowac nad Prisma, migracjami albo kolejnymi modulami opartymi o zapis danych.
+
+## Skrypty
+
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+npm run typecheck
+npm test
+npm run test:watch
+npm run check
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+npm run build:netlify
+```
+
+Najwazniejsze:
+
+- `npm run check` odpala `lint`, `typecheck`, `test` i `build`
+- `npm run build:netlify` robi `prisma generate` i build pod deploy
+
+## Konfiguracja `.env`
+
+Pelny przyklad jest w [`.env.example`](C:\Users\doman\Documents\transport-codex\.env.example).
+
+Najwazniejsze zmienne:
+
+- `DATABASE_URL`
+- `ENABLE_EXTERNAL_GEOCODING`
+- `ENABLE_EXTERNAL_ROUTING`
+- `ENABLE_EXTERNAL_CURRENCY`
+- `ENABLE_EXTERNAL_FUEL`
+- `ROUTING_PROVIDER`
+- `ORS_API_KEY`
+- `HEALTHCHECK_WITH_DB`
+- `HTTP_TIMEOUT_MS`
+- `HTTP_RETRIES`
+
+Dostepne endpointy i cache sa rowniez konfigurowalne:
+
+- `NOMINATIM_ENDPOINT`
+- `OSRM_ENDPOINT`
+- `ORS_HGV_ENDPOINT`
+- `CURRENCY_API_ENDPOINT`
+- `FUEL_API_ENDPOINT`
+- `CURRENCY_CACHE_TTL_MIN`
+- `FUEL_CACHE_TTL_MIN`
+
+### Przyklad routingu ciezarowego ORS
+
+```env
+ENABLE_EXTERNAL_ROUTING="true"
+ROUTING_PROVIDER="ors-hgv"
+ORS_API_KEY="twoj-klucz-ors"
+```
+
+Jesli `ORS_API_KEY` nie jest ustawiony, aplikacja przejdzie na fallback i zasygnalizuje to w statusie danych.
+
+## Testy i jakosc
+
+Szybki pelny check:
 
 ```powershell
 npm run check
@@ -143,26 +174,36 @@ npm test
 npm run build
 ```
 
-## Integracje API i konfiguracja
+## Deploy
 
-Kluczowe zmienne:
-- `ENABLE_EXTERNAL_GEOCODING`
-- `ENABLE_EXTERNAL_ROUTING`
-- `ENABLE_EXTERNAL_CURRENCY`
-- `ENABLE_EXTERNAL_FUEL`
-- `ROUTING_PROVIDER` (`osrm` lub `ors-hgv`)
-- `ORS_API_KEY`
-- `FUEL_API_ENDPOINT` (opcjonalnie)
-- `HTTP_TIMEOUT_MS`
-- `HTTP_RETRIES`
-- `HEALTHCHECK_WITH_DB`
+Projekt jest przygotowany pod Netlify.
 
-Przykład routingu ciężarowego (ORS):
+- konfiguracja: [`netlify.toml`](C:\Users\doman\Documents\transport-codex\netlify.toml)
+- instrukcja wdrozenia: [`docs/DEPLOY_NETLIFY.md`](C:\Users\doman\Documents\transport-codex\docs\DEPLOY_NETLIFY.md)
 
-```env
-ENABLE_EXTERNAL_ROUTING="true"
-ROUTING_PROVIDER="ors-hgv"
-ORS_API_KEY="twoj-klucz-ors"
-```
+Aktualny deploy:
 
-Jeśli `ORS_API_KEY` nie jest ustawiony, aplikacja automatycznie przełączy trasowanie na OSRM i pokaże ostrzeżenie.
+- [https://intratrans.netlify.app](https://intratrans.netlify.app)
+
+## Struktura projektu
+
+- [`src/app`](C:\Users\doman\Documents\transport-codex\src\app) - App Router, strona glowna i API routes
+- [`src/components`](C:\Users\doman\Documents\transport-codex\src\components) - formularze, mapa, panel kosztow
+- [`src/lib`](C:\Users\doman\Documents\transport-codex\src\lib) - logika biznesowa, providery, config i helpery
+- [`src/tests`](C:\Users\doman\Documents\transport-codex\src\tests) - testy jednostkowe
+- [`prisma`](C:\Users\doman\Documents\transport-codex\prisma) - schema i seed
+- [`docs`](C:\Users\doman\Documents\transport-codex\docs) - specyfikacja i plan implementacji
+
+## Dokumentacja projektu
+
+- [`AGENTS.md`](C:\Users\doman\Documents\transport-codex\AGENTS.md)
+- [`docs/PROJECT_SPEC.md`](C:\Users\doman\Documents\transport-codex\docs\PROJECT_SPEC.md)
+- [`docs/IMPLEMENTATION_PLAN.md`](C:\Users\doman\Documents\transport-codex\docs\IMPLEMENTATION_PLAN.md)
+- [`docs/NEW_SESSION_BRIEF.md`](C:\Users\doman\Documents\transport-codex\docs\NEW_SESSION_BRIEF.md)
+- [`docs/SPRINT_0_WEEK1.md`](C:\Users\doman\Documents\transport-codex\docs\SPRINT_0_WEEK1.md)
+
+## Uwagi
+
+- W repo sa fallbacki, bo projekt nie moze zakladac stalej dostepnosci publicznych API.
+- Parametry kosztowe pojazdow i ustawien sa obecnie robocze i powinny zostac dostrojone pod dane firmowe.
+- Przy zmianach w kalkulacji warto uruchamiac `npm test` i `npm run check`.

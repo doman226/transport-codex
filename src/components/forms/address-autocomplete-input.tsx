@@ -77,7 +77,7 @@ export const AddressAutocompleteInput = ({
   }, [normalizedCountryCode, value]);
 
   return (
-    <label className="text-sm font-medium text-slate-700">
+    <label className="text-sm font-semibold text-brand-700">
       {label}
       <div className="relative">
         <input
@@ -100,11 +100,9 @@ export const AddressAutocompleteInput = ({
         />
 
         {isOpen && (isLoading || suggestions.length > 0) ? (
-          <div className="absolute z-30 mt-1.5 max-h-72 w-full overflow-auto rounded-xl border border-slate-200 bg-white/95 p-1 shadow-xl">
+          <div className="absolute z-30 mt-1.5 max-h-72 w-full overflow-auto rounded-xl border border-brand-100 bg-white/95 p-1 shadow-xl">
             {isLoading ? (
-              <div className="px-3 py-2 text-xs text-slate-500">
-                Szukam podpowiedzi...
-              </div>
+              <div className="px-3 py-2 text-xs text-brand-500">Szukam podpowiedzi...</div>
             ) : null}
 
             {!isLoading &&
@@ -112,14 +110,14 @@ export const AddressAutocompleteInput = ({
                 <button
                   key={`${suggestion.displayName}-${suggestion.lat}-${suggestion.lng}`}
                   type="button"
-                  className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-800 transition hover:bg-brand-50"
+                  className="block w-full rounded-lg px-3 py-2 text-left text-sm text-brand-800 transition hover:bg-accent-50"
                   onMouseDown={() => {
                     onChange(suggestion.displayName);
                     setIsOpen(false);
                   }}
                 >
                   <span className="block font-medium">{suggestion.label}</span>
-                  <span className="block text-xs text-slate-500">
+                  <span className="block text-xs text-brand-500">
                     {suggestion.fallbackUsed ? "Podpowiedź fallback" : "Podpowiedź API"}
                   </span>
                 </button>

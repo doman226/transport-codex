@@ -21,7 +21,7 @@ const FitToRoute = ({ points }: { points: RoutePoint[] }) => {
   const map = useMap();
   if (points.length > 1) {
     const bounds = new LatLngBounds(points.map((point) => [point.lat, point.lng]));
-    map.fitBounds(bounds, { padding: [26, 26] });
+    map.fitBounds(bounds, { padding: [34, 34] });
   }
   return null;
 };
@@ -33,7 +33,7 @@ export const RouteMap = ({ geometry, start, end }: RouteMapProps) => {
   ][];
 
   return (
-    <div className="h-[360px] w-full overflow-hidden rounded-2xl border border-slate-200 shadow-inner">
+    <div className="h-[420px] w-full overflow-hidden rounded-[24px] border border-brand-300/28 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] md:h-[500px] 2xl:h-[560px]">
       <MapContainer
         center={[start.lat, start.lng]}
         zoom={6}
@@ -47,14 +47,22 @@ export const RouteMap = ({ geometry, start, end }: RouteMapProps) => {
         <FitToRoute points={geometry} />
         <Polyline
           positions={polylinePositions}
-          pathOptions={{ color: "#0c5fa8", weight: 5, opacity: 0.9 }}
+          pathOptions={{ color: "#8f6a35", weight: 3, opacity: 0.9 }}
         />
-        <CircleMarker center={[start.lat, start.lng]} radius={8} pathOptions={{ color: "#0f766e" }}>
+        <CircleMarker
+          center={[start.lat, start.lng]}
+          radius={9}
+          pathOptions={{ color: "#253783", fillColor: "#253783", fillOpacity: 1 }}
+        >
           <Tooltip permanent direction="top">
             Start
           </Tooltip>
         </CircleMarker>
-        <CircleMarker center={[end.lat, end.lng]} radius={8} pathOptions={{ color: "#b91c1c" }}>
+        <CircleMarker
+          center={[end.lat, end.lng]}
+          radius={9}
+          pathOptions={{ color: "#8f6a35", fillColor: "#8f6a35", fillOpacity: 1 }}
+        >
           <Tooltip permanent direction="top">
             Cel
           </Tooltip>

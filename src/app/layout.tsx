@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
+import { Barlow, Exo_2 } from "next/font/google";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
-const bodyFont = Plus_Jakarta_Sans({
+const bodyFont = Barlow({
   subsets: ["latin", "latin-ext"],
   variable: "--font-body",
   weight: ["400", "500", "600", "700"]
 });
 
-const headingFont = Space_Grotesk({
+const headingFont = Exo_2({
   subsets: ["latin", "latin-ext"],
   variable: "--font-heading",
   weight: ["500", "600", "700"]
